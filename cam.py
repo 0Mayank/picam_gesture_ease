@@ -4,6 +4,7 @@ import numpy as np
 import struct
 import threading
 import json
+import base64
 from queue import Queue
 
 # Configure the socket
@@ -35,7 +36,8 @@ def capture_and_send(camera_id, qs, qr, w, h):
 
             # Converting the array 'a' to bytes using a.tobytes() method and storing it in 'a_bytes'
             a_bytes = a.tobytes()
-            qr.put(a_bytes)
+            a_encoded = base64.b64encode(a_bytes).decode("utf8")
+            qr.put(a_encoded)
     finally:
         # Clean up
         picam2.stop()
