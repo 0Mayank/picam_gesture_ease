@@ -10,7 +10,7 @@ from queue import Queue
 HOST = "localhost"  # Replace with your Rust application's IPC endpoint
 PORT = 5555  # Replace with the port number your Rust application listens on
 
-config = {"process_id": "cam", "server_address": "/tmp/gesturease.sock"}
+config = {"process_id": "cam", "server_address": "/tmp/gesurease.sock"}
 
 cam1_send_q = Queue()
 cam1_receive_q = Queue()
@@ -68,11 +68,17 @@ if __name__ == "__main__":
 
     sock.sendall(config["process_id"].encode())
 
-    w1 = sock.recv(4)
-    h1 = sock.recv(4)
+    print("Starting Cams. Waiting for img dimensions...")
 
-    w2 = sock.recv(4)
-    h2 = sock.recv(4)
+    w1 = struct.unpack("!I", sock.recv(4))[0]
+    h1 = struct.unpack("!I", sock.recv(4))[0]
+
+    w2 = struct.unpack("!I", sock.recv(4))[0]
+    h2 = struct.unpack("!I", sock.recv(4))[0]
+
+    print("Dimensions received.")
+    print(w1, h1, w2, h2)
+    print("Starting cams...")
 
     thread_cam0 = threading.Thread(
         target=capture_and_send, args=(0, cam1_send_q, cam1_receive_q, w1, h1)
