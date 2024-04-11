@@ -4,7 +4,6 @@ import numpy as np
 import struct
 import threading
 import json
-import base64
 from queue import Queue
 
 # Configure the socket
@@ -22,7 +21,8 @@ cam2_receive_q = Queue()
 def capture_and_send(camera_id, qs, qr, w, h):
     picam2 = Picamera2(camera_num=camera_id)
     camera_config = picam2.create_still_configuration(
-        main={"size": (w, h)}
+        main={"size": (w, h)},
+        queue=False
     )  # Adjust settings as needed
     picam2.configure(camera_config)
     picam2.start()
@@ -36,8 +36,7 @@ def capture_and_send(camera_id, qs, qr, w, h):
 
             # Converting the array 'a' to bytes using a.tobytes() method and storing it in 'a_bytes'
             a_bytes = a.tobytes()
-            a_encoded = base64.b64encode(a_bytes).decode("utf8")
-            qr.put(a_encoded)
+            qr.put(a_bytes)
     finally:
         # Clean up
         picam2.stop()
@@ -47,6 +46,8 @@ def run():
     get = sock.recv(4)
     if len(get) == 0:
         print("Connection closed, exiting...")
+        cam1_send_q.put_nowait(False)
+        cam2_send_q.put_nowait(False)
         exit(1)
 
     get = struct.unpack("!I", get)[0]
@@ -59,8 +60,16 @@ def run():
     img1 = cam1_receive_q.get(timeout=2)
     img2 = cam2_receive_q.get(timeout=2)
 
-    res = json.dumps({"cam1": img1, "cam2": img2})
-    sock.sendall(res.encode())
+    sock.sendall(struct.pack("!I", len(img1)))
+    sock.sendall(img1)
+
+    _send = sock.recv(4)
+    _send = struct.unpack("!I", _send)[0]
+    if _send != 2:
+        return
+
+    sock.sendall(struct.pack("!I", len(img2)))
+    sock.sendall(img2)
 
 
 if __name__ == "__main__":
